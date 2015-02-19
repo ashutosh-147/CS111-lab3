@@ -638,7 +638,7 @@ indir2_index(uint32_t b)
 	// Your code here.
     if(b < OSPFS_NDIRECT + OSPFS_NINDIRECT)
 	    return -1;
-    return b - OSPFS_NDIRECT + OSPFS_NINDIRECT;
+    return b - (OSPFS_NDIRECT + OSPFS_NINDIRECT);
 }
 
 
@@ -657,7 +657,7 @@ static int32_t
 indir_index(uint32_t b)
 {
 	// Your code here.
-    if(OSPFS_NDIRECT < b || b < OSPFS_NDIRECT + OSPFS_NINDIRECT)
+    if(OSPFS_NDIRECT < b && b < OSPFS_NDIRECT + OSPFS_NINDIRECT)
         return b - OSPFS_NDIRECT;
     return -1;
 }
@@ -731,6 +731,8 @@ add_block(ospfs_inode_t *oi)
     if((new_block = allocate_block()) == 0) {
         return -ENOSPC;
     }
+    eprintk("Allocated data block %d\n", new_block);
+    eprintk("File should now have %d data blocks\n", n+1);
     uint32_t index;
     uint32_t *new_block_data = ospfs_block(new_block);
     int i;
@@ -754,7 +756,7 @@ add_block(ospfs_inode_t *oi)
         ((uint32_t*) ospfs_block(allocated[1]))[0] = allocated[0];
         ((uint32_t*) ospfs_block(allocated[0]))[0] = new_block;
         oi->oi_indirect2 = allocated[1];
-        eprintk("successfully allocated doubly indirect block\n");
+        eprintk("indirect2: %d first indirect: %d block: %d\n", oi->oi_indirect2, ((uint32_t*) ospfs_block(oi->oi_indirect2))[0], ((uint32_t*) ospfs_block(((uint32_t*) ospfs_block(oi->oi_indirect2))[0]))[0]);
     }
     // need to allocate new indirect block
     else if(n == OSPFS_NDIRECT) {
@@ -776,13 +778,16 @@ add_block(ospfs_inode_t *oi)
 
     // adding to indirect block
     else if((index = indir_index(n)) != -1) {
+        eprintk("Adding to indirect block\n");
         ((uint32_t*)ospfs_block(oi->oi_indirect))[index] = new_block;
     }
     
     // adding to indirect2 block
     else if((index = indir2_index(n)) != -1) {
         // check if need to add another indirect block
+        eprintk("Adding to indirect2 block %d\n", index);
         if(index % OSPFS_NINDIRECT == 0) {
+            eprintk("allocating new indirect block for indirect2 block %d\n", index/OSPFS_NINDIRECT);
             if((allocated[0] = allocate_block()) == 0) {
                 free_block(new_block);
                 return -ENOSPC;
@@ -790,8 +795,11 @@ add_block(ospfs_inode_t *oi)
             ((uint32_t*)ospfs_block(allocated[0]))[0] = new_block;
             ((uint32_t*)ospfs_block(oi->oi_indirect2))[index/OSPFS_NINDIRECT] = allocated[0];
         } else {
+            eprintk("adding to existing indirect block in indirect2 block %d\n", index/OSPFS_NINDIRECT);
             ((uint32_t*)ospfs_block(((uint32_t*)ospfs_block(oi->oi_indirect2))[index/OSPFS_NINDIRECT]))[index % OSPFS_NINDIRECT] = new_block;
         }
+    } else {
+        eprintk("doing nothing\n");
     }
 
     oi->oi_size = (n + 1) * OSPFS_BLKSIZE;
@@ -1024,10 +1032,12 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 
 		// ospfs_inode_blockno returns 0 on error
 		if (blockno == 0) {
+            eprintk("Invalid block\n");
 			retval = -EIO;
 			goto done;
 		}
 
+        eprintk("reading from block: %d\n", blockno);
 		data = ospfs_block(blockno);
 
 		// Figure out how much data is left in this block to read.
@@ -1103,7 +1113,10 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 		uint32_t n;
 		char *data;
 
+        eprintk("attempting to write to block: %d\n", blockno);
+
 		if (blockno == 0) {
+            eprintk("Invalid block\n");
 			retval = -EIO;
 			goto done;
 		}
