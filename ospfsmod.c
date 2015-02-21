@@ -423,7 +423,7 @@ ospfs_dir_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *ign
 static int
 ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 {
-    eprintk("reading directory\n");
+    //eprintk("reading directory\n");
 	struct inode *dir_inode = filp->f_dentry->d_inode;
 	ospfs_inode_t *dir_oi = ospfs_inode(dir_inode->i_ino);
 	uint32_t f_pos = filp->f_pos;
@@ -1221,13 +1221,17 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
     int off;
     for (off = 0; off < dir_oi->oi_size; off += OSPFS_DIRENTRY_SIZE) {
 		ospfs_direntry_t *od = ospfs_inode_data(dir_oi, off);
-        if(od->od_ino == 0)
+        if(od->od_ino == 0) {
+            eprintk("returning inode %d\n", off);
             return od;
+        }
     }
+    eprintk("Increasing directory size\n");
     // got here because ran out of space (need to allocate more)
     if(change_size(dir_oi, dir_oi->oi_size + OSPFS_DIRENTRY_SIZE) < 0)
         return -ENOSPC;
 
+    eprintk("returning inode %d\n", off);
     return ospfs_inode_data(dir_oi, off);
 }
 
@@ -1263,7 +1267,36 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 static int
 ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dentry) {
 	/* EXERCISE: Your code here. */
-	return -EINVAL;
+	//return -EINVAL;
+    eprintk("Creating hard link\n");
+
+    ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
+    if(find_direntry(dir_oi, dst_dentry->d_name.name, dst_dentry->d_name.len) != NULL)
+        return -EEXIST;
+    eprintk("not a duplicate direntry\n");
+    ospfs_direntry_t *od = create_blank_direntry(dir_oi);
+    if(IS_ERR(od))
+        return -ENOSPC;
+    eprintk("found a direntry\n");
+    if(dst_dentry->d_name.len > OSPFS_MAXNAMELEN)
+        return -ENAMETOOLONG;
+
+    ospfs_inode_t * inode;
+    if((inode = ospfs_inode(src_dentry->d_inode->i_ino)) == 0)
+        return -EIO;
+    eprintk("got inode\n");
+    
+    inode->oi_nlink++;
+    eprintk("incremented links\n");
+    od->od_ino = src_dentry->d_inode->i_ino;
+    eprintk("set inode number\n");
+    strncpy(od->od_name, dst_dentry->d_name.name, OSPFS_MAXNAMELEN+1);
+
+    eprintk("set the name\n");
+    eprintk("src inode %d\n", src_dentry->d_inode->i_ino);
+    //dst_dentry->d_inode = src_dentry->d_inode;
+    eprintk("done creating hardlink\n");
+    return 0;
 }
 
 // ospfs_create
