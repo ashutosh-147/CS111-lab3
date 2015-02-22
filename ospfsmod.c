@@ -1478,8 +1478,49 @@ ospfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 	ospfs_symlink_inode_t *oi =
 		(ospfs_symlink_inode_t *) ospfs_inode(dentry->d_inode->i_ino);
 	// Exercise: Your code here.
+	
+	eprintk("following symlink\n");
 
-	nd_set_link(nd, oi->oi_symlink);
+	int colon_pos;
+	char * path = oi->oi_symlink;
+	char temp[OSPFS_MAXSYMLINKLEN+1];
+	strncpy(temp,path,6);
+	temp[5] = '\0';
+	eprintk("%s\n", path);
+	eprintk("%s %s\n", temp, path);
+	eprintk("%d %s\n", strncmp(temp,"root?",5), strstr(path,":"));
+        if( strncmp(temp,"root?",5) == 0 && strstr(path,":") != NULL )
+	{
+	  eprintk("conditional symlink\n");
+	    for(colon_pos = 0; colon_pos < OSPFS_MAXSYMLINKLEN+1; colon_pos++)
+	      {
+	        if( path[colon_pos] == ':' )
+	            break;
+	    }
+	    if ( current->uid == 0 ) // root
+	    {
+	      eprintk("is root\n");
+	      strncpy(temp, path + 5, colon_pos - 5);
+	      temp[colon_pos - 5] = '\0';
+	    }
+	    else
+	    {
+	      eprintk("is not root\n");
+	      strncpy(temp, path + colon_pos + 1, strlen(path) - colon_pos -1);
+	      temp[strlen(path) - colon_pos - 1] = '\0';
+	    }
+	    eprintk("temp is %s\n", temp);
+	    //search current directory for file of name 'temp'
+	    ospfs_direntry_t * entry_temp = find_direntry(ospfs_inode(dentry->d_parent->d_inode->i_ino),temp,strlen(temp));
+	    nd_set_link(nd, entry_temp->od_name);
+	    eprintk("od_name is %s\n", entry_temp->od_name);
+	} 
+	else
+	{
+	  eprintk("Not conditional\n");
+	    nd_set_link(nd, oi->oi_symlink);
+	}
+	eprintk("finished following\n");
 	return (void *) 0;
 }
 
