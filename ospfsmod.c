@@ -1235,7 +1235,7 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
     return ospfs_inode_data(dir_oi, off);
 }
 
-// ospfs_link(src_dentry, dir, dst_dentry
+// ospfs_link(src_dentry, dir, dst_dentry ZUBAT
 //   Linux calls this function to create hard links.
 //   It is the ospfs_dir_inode_ops.link callback.
 //
@@ -1376,7 +1376,7 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 }
 
 
-// ospfs_symlink(dirino, dentry, symname)
+// ospfs_symlink(dirino, dentry, symname) ZUBAT
 //   Linux calls this function to create a symbolic link.
 //   It is the ospfs_dir_inode_ops.symlink callback.
 //
@@ -1402,10 +1402,49 @@ static int
 ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 {
 	ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
-	uint32_t entry_ino = 0;
+	uint32_t entry_ino = 2;
 
 	/* EXERCISE: Your code here. */
-	return -EINVAL;
+	//return -EINVAL;
+
+    eprintk("Creating soft link\n");
+
+    if(find_direntry(dir_oi, dentry->d_name.name, dentry->d_name.len) != NULL)
+        return -EEXIST;
+    eprintk("not a duplicate direntry\n");
+    ospfs_direntry_t *od = create_blank_direntry(dir_oi);
+    if(IS_ERR(od))
+        return -ENOSPC;
+    eprintk("found a direntry\n");
+    if(dentry->d_name.len > OSPFS_MAXNAMELEN)
+        return -ENAMETOOLONG;
+    strcpy(od->od_name, dentry->d_name.name);
+    
+    ospfs_inode_t * temp;
+    while(1)
+    {
+        if((temp=ospfs_inode(entry_ino)) == NULL)
+            return -ENOSPC; //check the error
+        if(temp->oi_nlink == 0)
+            break;
+        entry_ino++;
+    }
+    ospfs_symlink_inode_t * inode = (ospfs_symlink_inode_t *)temp;
+    eprintk("got symlink_inode\n");
+
+    od->od_ino = entry_ino;
+    eprintk("set inode number\n");
+
+    if((inode->oi_size = strlen(symname)) > OSPFS_MAXSYMLINKLEN + 1)
+      return -ENAMETOOLONG;
+    inode->oi_ftype = OSPFS_FTYPE_SYMLINK;
+    inode->oi_nlink = 1;
+    strncpy(inode->oi_symlink, symname, OSPFS_MAXSYMLINKLEN + 1);
+    eprintk("set the name\n");
+
+    //eprintk("src inode %d\n", src_dentry->d_inode->i_ino);
+    //dst_dentry->d_inode = src_dentry->d_inode;
+    eprintk("done creating symlink\n");
 
 	/* Execute this code after your function has successfully created the
 	   file.  Set entry_ino to the created file's inode number before
