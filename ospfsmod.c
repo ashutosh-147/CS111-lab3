@@ -424,6 +424,7 @@ static int
 ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 {
     //eprintk("reading directory\n");
+    //eprintk("this is the thing from ls hopefully, the ninodes is %d\n", ospfs_super->os_ninodes);
 	struct inode *dir_inode = filp->f_dentry->d_inode;
 	ospfs_inode_t *dir_oi = ospfs_inode(dir_inode->i_ino);
 	uint32_t f_pos = filp->f_pos;
