@@ -1236,7 +1236,7 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
     return ospfs_inode_data(dir_oi, off);
 }
 
-// ospfs_link(src_dentry, dir, dst_dentry ZUBAT
+// ospfs_link(src_dentry, dir, dst_dentry
 //   Linux calls this function to create hard links.
 //   It is the ospfs_dir_inode_ops.link callback.
 //
@@ -1361,7 +1361,7 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
     temp->oi_nlink = 1;
     temp->oi_ftype = OSPFS_FTYPE_REG;
     temp->oi_mode = mode;
-
+    temp->oi_size = 0;
 	//return -EINVAL; // Replace this line
 
 	/* Execute this code after your function has successfully created the
@@ -1377,7 +1377,7 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 }
 
 
-// ospfs_symlink(dirino, dentry, symname) ZUBAT
+// ospfs_symlink(dirino, dentry, symname)
 //   Linux calls this function to create a symbolic link.
 //   It is the ospfs_dir_inode_ops.symlink callback.
 //
