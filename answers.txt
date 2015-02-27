@@ -11,14 +11,14 @@
 # information you'd like us to know, please add it at the end of the file.
 
 # Partner 1
-Name: 
-Student ID: 
-Email: 
+Name: Ashutosh Shiledar
+Student ID: 304142693
+Email: ashutosh.shiledar@gmail.com
 
 # Partner 2 (if you're working in a team)
-Name: 
-Student ID: 
-Email: 
+Name: Nicholas Chung
+Student ID: 404252775
+Email: nickchung114@g.ucla.edu
 
 # Extra credit problems
 #Extra credit problem: none
